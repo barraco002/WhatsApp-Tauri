@@ -20,6 +20,12 @@ This app                            ████                                
 
 ---
 
+## What it looks like
+
+<img src="assets/screenshot.png" width="760" alt="The app open on first run: a native window titled Whatsapp Tauri, showing WhatsApp Web asking to link a device">
+
+First run, empty profile: no account linked, no history, nothing preinstalled. The window is the whole product - there is no custom UI to show you, because there isn't one.
+
 ## Why this exists
 
 Most WhatsApp desktop wrappers ship an entire Chromium build to render one web page. That is 180-200 MB of disk and

@@ -54,7 +54,7 @@ Check 'los 8 documentos del runbook estan en el remoto' {
 
 Check 'imagenes referenciadas por el README presentes' {
   $tree = git -C $repoDir ls-tree -r --name-only lite/main
-  ($tree -contains 'assets/whatsapp-tauri.svg') -and ($tree -contains 'assets/social-preview.png')
+  ($tree -contains 'assets/whatsapp-tauri.svg') -and ($tree -contains 'assets/social-preview.png') -and ($tree -contains 'assets/screenshot.png')
 }
 Check 'topics incluyen tauri y rust' {
   $j = gh api ('repos/' + $repo + '/topics') -H 'Accept: application/vnd.github+json' | ConvertFrom-Json
