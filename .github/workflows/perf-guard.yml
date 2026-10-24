@@ -1,0 +1,106 @@
+name: performance guard
+
+# Fails a PR that makes the shipped binary fatter than the budget, and posts the numbers as a comment.
+# Baseline for the delta is the pre-optimisation release (12,729,344 B, commit 12ae4d2).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'whatsapp-lite/src-tauri/**'
+      - 'whatsapp-lite/package.json'
+      - '.github/workflows/perf-guard.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+env:
+  CARGO_TERM_COLOR: always
+  BASELINE_BYTES: 12729344
+  BUDGET_BYTES: 7000000
+
+jobs:
+  size-guard:
+    name: release .exe size guard
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: whatsapp-lite/src-tauri
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: whatsapp-lite/src-tauri -> target
+
+      - name: Build release
+        run: cargo build --release
+
+      - name: Measure binary
+        id: measure
+        shell: pwsh
+        run: |
+          $exe = 'target/release/whatsapp-tauri.exe'
+          if (-not (Test-Path $exe)) { Write-Error "missing $exe"; exit 1 }
+          $bytes = (Get-Item $exe).Length
+          $baseline = [int]$env:BASELINE_BYTES
+          $budget = [int]$env:BUDGET_BYTES
+          $mib = [math]::Round($bytes / 1MB, 2)
+          $delta = [math]::Round((($bytes - $baseline) / $baseline) * 100, 1)
+          $ok = $bytes -le $budget
+          $verdict = if ($ok) { 'PASS' } else { 'FAIL - over budget' }
+          $sign = if ($delta -ge 0) { '+' } else { '' }
+          $emoji = if ($ok) { ':white_check_mark:' } else { ':x:' }
+          Write-Output "$exe = $bytes B ($mib MiB), delta $sign$delta% vs baseline, $verdict"
+          $table = @(
+            '$emoji **performance guard** - release exe size',
+            '',
+            '| metric | value |',
+            '|---|---:|',
+            "| this PR | **$bytes B ($mib MiB)** |",
+            "| baseline (12ae4d2) | $baseline B (12.14 MiB) |",
+            "| delta | **$sign$delta %** |",
+            "| budget | $budget B |",
+            "| verdict | **$verdict** |",
+            '',
+            '<sub>Measured with the same harness documented in [BENCHMARKS.md](../blob/main/BENCHMARKS.md). Sizes are bundle-comparable: tauri build embeds ~254 KB of manifest, icons and metadata that cargo build does not.</sub>'
+          ) -join "`n"
+          Set-Content -Path "$env:GITHUB_WORKSPACE/perf-comment.md" -Value $table -Encoding UTF8
+          "bytes=$bytes" >> $env:GITHUB_OUTPUT
+          "mib=$mib" >> $env:GITHUB_OUTPUT
+          "delta=$sign$delta" >> $env:GITHUB_OUTPUT
+          "verdict=$verdict" >> $env:GITHUB_OUTPUT
+          if (-not $ok) {
+            Write-Error "release binary is over the budget: $bytes B > $budget B"
+            exit 1
+          }
+
+      - name: Job summary
+        if: always()
+        shell: pwsh
+        run: Get-Content "$env:GITHUB_WORKSPACE/perf-comment.md" >> $env:GITHUB_STEP_SUMMARY
+
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = 'performance guard';
+            const body = fs.readFileSync(process.env.GITHUB_WORKSPACE + '/perf-comment.md', 'utf8');
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number
+            });
+            const previous = comments.find(c => c.body && c.body.includes(marker));
+            if (previous) {
+              await github.rest.issues.updateComment({ owner: context.repo.owner, repo: context.repo.repo, comment_id: previous.id, body });
+            } else {
+              await github.rest.issues.createComment({ owner: context.repo.owner, repo: context.repo.repo, issue_number: context.issue.number, body });
+            }

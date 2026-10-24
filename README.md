@@ -18,6 +18,9 @@ Supports Windows and Linux.
 > [!NOTE]
 > **Fork (barraco002):** this fork ships `v0.3.3` with a dark native title bar and menus on Windows (matching the dark UI), plus hardening fixes from a full source audit — reserved Windows filenames in downloads, tray left-click behavior, and shortcut diagnostics. Details in [AUDIT.md](AUDIT.md) · [CHANGELOG](CHANGELOG.md) · [v0.3.3 release](../../releases/tag/v0.3.3).
 
+> [!TIP]
+> **Build size: −48.5 %.** The release profile now ships a **6.25 MiB** binary instead of 12.14 MiB, and the NSIS installer drops to **2.00 MiB** — with cold start, memory and frame pacing unchanged within measurement noise. Full methodology, the rejected variants and the raw dumps: [BENCHMARKS.md](BENCHMARKS.md). A CI guard ([perf-guard.yml](.github/workflows/perf-guard.yml)) fails any PR that pushes the binary past 7.0 MB.
+
 ---
 
 ## Features
