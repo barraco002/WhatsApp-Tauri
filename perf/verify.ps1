@@ -32,6 +32,17 @@ if (Test-Path $exe) {
   else { "exe = $size B (baseline 12729344 B, -{0:N1}%)" -f (100.0 * (12729344 - $size) / 12729344) }
 } else { $fail += 'no existe el .exe release' }
 
+# 5) Documentacion viva: YAML valido, enlaces vivos, UTF-8 sin mojibake.
+$py = 'C:\Users\Joseph\.dsh\dsh-runtimes\dsh-primary-runtime\dependencies\python\python.exe'
+if (-not (Test-Path $py)) { $cmd = Get-Command python -ErrorAction SilentlyContinue; if ($cmd) { $py = $cmd.Source } }
+if (Test-Path $py) {
+  foreach ($s in @('perf\check-yaml.py','perf\check-links.py','perf\check-encoding.py')) {
+    if (-not (Test-Path (Join-Path $repo $s))) { $fail += "falta $s"; continue }
+    & $py (Join-Path $repo $s) *> $null
+    if ($LASTEXITCODE -ne 0) { $fail += "$s salio $LASTEXITCODE" } else { "ok  $s" }
+  }
+} else { $fail += 'no hay python para los verificadores de documentacion' }
+
 if ($fail.Count -gt 0) { $fail | ForEach-Object { "FALLO: $_" }; exit 1 }
 "OK: entregables, evidencia y perfil de release verificados"
 exit 0

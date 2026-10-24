@@ -61,6 +61,20 @@ Check 'topics incluyen tauri y rust' {
   ($j.names -contains 'tauri') -and ($j.names -contains 'rust')
 }
 
+Check 'documentacion de comunidad presente' {
+  $tree = git -C $repoDir ls-tree -r --name-only lite/main
+  $need = @('SECURITY.md','CONTRIBUTING.md','CODE_OF_CONDUCT.md','.github/PULL_REQUEST_TEMPLATE.md','.github/ISSUE_TEMPLATE/bug.yml','.github/ISSUE_TEMPLATE/feature.yml','.github/ISSUE_TEMPLATE/config.yml')
+  ($need | Where-Object { $tree -notcontains $_ }).Count -eq 0
+}
+Check 'community health = 100' {
+  $h = gh api ('repos/' + $repo + '/community/profile') | ConvertFrom-Json
+  [int]$h.health_percentage -eq 100
+}
+Check 'discussions habilitadas' {
+  $j = gh api ('repos/' + $repo) | ConvertFrom-Json
+  [bool]$j.has_discussions
+}
+
 if ($fails.Count -gt 0) {
   Write-Host ''
   Write-Host ('FALLOS: ' + ($fails -join ', '))
