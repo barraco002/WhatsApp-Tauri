@@ -1,0 +1,59 @@
+#requires -Version 5.1
+# Verifica que el repo standalone y su release son coherentes con lo medido y publicado.
+# Uso: powershell -ExecutionPolicy Bypass -File perf\verify-publish.ps1
+$ErrorActionPreference = 'Stop'
+$repo = 'barraco002/whatsapp-tauri-lite'
+$tag = 'v0.3.3'
+$assetName = 'Whatsapp.Tauri_0.3.3_x64-setup.exe'
+$assetSize = 2096259
+$fails = New-Object System.Collections.ArrayList
+function Check([string]$name, [scriptblock]$test) {
+  try {
+    $r = & $test
+    if ($r) { Write-Host ('PASS  ' + $name) } else { Write-Host ('FAIL  ' + $name); [void]$fails.Add($name) }
+  } catch {
+    Write-Host ('FAIL  ' + $name + '  (' + $_.Exception.Message + ')'); [void]$fails.Add($name)
+  }
+}
+
+Check 'repo publico y rama main' {
+  $j = gh api ('repos/' + $repo) | ConvertFrom-Json
+  (-not $j.private) -and ($j.default_branch -eq 'main')
+}
+Check 'topics >= 7' {
+  $j = gh api ('repos/' + $repo + '/topics') -H 'Accept: application/vnd.github+json' | ConvertFrom-Json
+  $j.names.Count -ge 7
+}
+Check 'release publicado (no draft, no prerelease)' {
+  $r = gh release view $tag --repo $repo --json isDraft,isPrerelease | ConvertFrom-Json
+  (-not $r.isDraft) -and (-not $r.isPrerelease)
+}
+Check ('asset ' + $assetName + ' con ' + $assetSize + ' B') {
+  $r = gh release view $tag --repo $repo --json assets | ConvertFrom-Json
+  $a = $r.assets | Where-Object { $_.name -eq $assetName }
+  ($null -ne $a) -and ([int64]$a.size -eq $assetSize)
+}
+Check 'main remoto == HEAD local' {
+  $remote = (git ls-remote lite refs/heads/main) -split "`t" | Select-Object -First 1
+  $head = git rev-parse HEAD
+  $remote.Trim() -eq $head.Trim()
+}
+Check 'README remoto tiene el H1 de producto' {
+  $b64 = gh api ('repos/' + $repo + '/readme') --jq .content
+  $txt = [System.Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(($b64 -join '')))
+  $txt.Contains('# WhatsApp Tauri Lite')
+}
+Check 'los 8 documentos del runbook estan en el remoto' {
+  $tree = gh api ('repos/' + $repo + '/git/trees/main?recursive=0') --jq '.tree[].path'
+  $need = @('OPTIMIZATION_REPORT.md','perf-log.md','bottleneck-analysis.md','BENCHMARKS.md','BUGS_FOUND.md','DEPENDENCIES_JUSTIFICATION.md','PERF-PLAN.md','LICENSE')
+  ($need | Where-Object { $tree -notcontains $_ }).Count -eq 0
+}
+
+if ($fails.Count -gt 0) {
+  Write-Host ''
+  Write-Host ('FALLOS: ' + ($fails -join ', '))
+  exit 1
+}
+Write-Host ''
+Write-Host 'OK: publicacion verificada'
+exit 0
