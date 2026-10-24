@@ -2,6 +2,9 @@
 # Verifica que el repo standalone y su release son coherentes con lo medido y publicado.
 # Uso: powershell -ExecutionPolicy Bypass -File perf\verify-publish.ps1
 $ErrorActionPreference = 'Stop'
+$repoDir = 'D:\dev\whatsapp-tauri'
+if (-not (Test-Path $repoDir)) { Write-Host ('FAIL  no existe ' + $repoDir); exit 1 }
+Set-Location $repoDir
 $repo = 'barraco002/whatsapp-tauri-lite'
 $tag = 'v0.3.3'
 $assetName = 'Whatsapp.Tauri_0.3.3_x64-setup.exe'
@@ -34,8 +37,8 @@ Check ('asset ' + $assetName + ' con ' + $assetSize + ' B') {
   ($null -ne $a) -and ([int64]$a.size -eq $assetSize)
 }
 Check 'main remoto == HEAD local' {
-  $remote = (git ls-remote lite refs/heads/main) -split "`t" | Select-Object -First 1
-  $head = git rev-parse HEAD
+  $remote = (git -C $repoDir ls-remote lite refs/heads/main) -split "`t" | Select-Object -First 1
+  $head = git -C $repoDir rev-parse HEAD
   $remote.Trim() -eq $head.Trim()
 }
 Check 'README remoto tiene el H1 de producto' {
