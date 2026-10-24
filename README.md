@@ -111,6 +111,45 @@ OPTIMIZATION_REPORT.md    # full audit: phases, KPIs, rejected variants
 BUGS_FOUND.md             # pre-existing bugs, documented not fixed
 ```
 
+## FAQ
+
+**Is this safe? Do you see my messages?**
+
+No. The window loads `https://web.whatsapp.com` in the WebView2 that Windows already has, exactly like Edge would. There
+is no proxy, no interceptor and no local copy of your chats. The app cannot read them any more than your browser can.
+
+**Why not just use the official app?**
+
+The official desktop app is an Electron build: about 200 MB on disk and a bundled Chromium. If you want a native window
+and none of that, this exists. If you want WhatsApp's own feature set, use theirs - this will never implement anything
+the web client does not do.
+
+**Then why is the RAM 845 MiB?**
+
+Because a WebView is a browser engine: 96 % of that is the WebView2 process tree, and any wrapper of a web app pays it.
+The native process is 32 MiB. This project buys disk and startup time, not memory, and pretending otherwise would be
+the easiest thing to catch in a benchmark.
+
+**Does it work on Linux?**
+
+The source builds on Linux (WebKitGTK), but no Linux binaries are published yet - see issue #1. The installer in
+Releases is Windows only.
+
+**Is it a fork?**
+
+It started from [Wpnnt/WhatsApp-Tauri](https://github.com/Wpnnt/WhatsApp-Tauri) and carries that author's client. What
+is new here is the release-profile work, the measurement harness and the audit. The credit line stays no matter how
+many stars this gets.
+
+**Can I trust the installer?**
+
+Verify the SHA-256 above, or build it yourself from source - the build is four commands and needs no signing key.
+
+## Contributing
+
+[CONTRIBUTING.md](CONTRIBUTING.md) has the gates, the size budget (7 MB, CI-enforced) and the two things that will be
+declined. Security issues go through [SECURITY.md](SECURITY.md), not a public issue.
+
 ## Credits and licence
 
 MIT. Based on [Wpnnt/WhatsApp-Tauri](https://github.com/Wpnnt/WhatsApp-Tauri) - all credit for the original client goes

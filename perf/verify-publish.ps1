@@ -52,6 +52,15 @@ Check 'los 8 documentos del runbook estan en el remoto' {
   ($need | Where-Object { $tree -notcontains $_ }).Count -eq 0
 }
 
+Check 'imagenes referenciadas por el README presentes' {
+  $tree = git -C $repoDir ls-tree -r --name-only lite/main
+  ($tree -contains 'assets/whatsapp-tauri.svg') -and ($tree -contains 'assets/social-preview.png')
+}
+Check 'topics incluyen tauri y rust' {
+  $j = gh api ('repos/' + $repo + '/topics') -H 'Accept: application/vnd.github+json' | ConvertFrom-Json
+  ($j.names -contains 'tauri') -and ($j.names -contains 'rust')
+}
+
 if ($fails.Count -gt 0) {
   Write-Host ''
   Write-Host ('FALLOS: ' + ($fails -join ', '))

@@ -1,0 +1,61 @@
+name: Bug report
+description: Something in the window, the tray, a download or the installer does not behave
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: this app is a window around WhatsApp Web. If the problem is inside the chat itself
+        (messages not arriving, QR not scanning, calls), it is WhatsApp's and not fixable here.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: From the installer filename (e.g. 0.3.3), or Settings inside the app
+      placeholder: 0.3.3
+    validations:
+      required: true
+  - type: input
+    id: windows
+    attributes:
+      label: Windows version
+      placeholder: Windows 11 23H2
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open the app
+        2. Click the tray icon
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened
+      description: If the app printed something on stderr, paste it - the shortcut registration failure and the deep-link handler both report there
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Window / title bar
+        - Tray
+        - Global shortcut
+        - Download
+        - Deep link
+        - Installer
+        - Other
+    validations:
+      required: true
