@@ -1,140 +1,107 @@
-<img src="https://github.com/Wpnnt/WhatsApp-Tauri/blob/main/assets/whatsapp-tauri.svg" alt="Whatsapp Tauri Logo" align="left" width="65" height="65">
+<img src="assets/whatsapp-tauri.svg" alt="logo" align="left" width="64" height="64">
 
-# WhatsApp Tauri
+# WhatsApp Tauri Lite
 
-A native WhatsApp desktop client built with Tauri v2 and Rust.
+**A WhatsApp desktop client in 6 MB, not 200.** Native window, system WebView, no bundled Chromium.
 
-I originally made this project because most WhatsApp desktop wrappers use Electron, which can feel unnecessarily heavy for what is basically a web app. This version uses the system WebView instead, so it starts faster and generally uses less memory.
+[![Release](https://img.shields.io/github/v/release/barraco002/whatsapp-tauri-lite?label=download&color=brightgreen)](https://github.com/barraco002/whatsapp-tauri-lite/releases/latest)
+[![Stars](https://img.shields.io/github/stars/barraco002/whatsapp-tauri-lite?style=flat&color=yellow)](https://github.com/barraco002/whatsapp-tauri-lite/stargazers)
+[![License](https://img.shields.io/badge/license-MIT-blue)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux-lightgrey)](#installation)
 
-The goal of this project is to keep things simple, lightweight, and close to the native desktop experience.
-
-Supports Windows and Linux.
-
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Tauri](https://img.shields.io/badge/Framework-Tauri_v2-red.svg)](https://tauri.app/)
-[![Rust](https://img.shields.io/badge/Language-Rust-orange.svg)](https://www.rust-lang.org/)
-[![Platform](https://img.shields.io/badge/Platform-Windows_%7C_Linux-blue.svg)](#)
-
-> [!NOTE]
-> **Fork (barraco002):** this fork ships `v0.3.3` with a dark native title bar and menus on Windows (matching the dark UI), plus hardening fixes from a full source audit — reserved Windows filenames in downloads, tray left-click behavior, and shortcut diagnostics. Details in [AUDIT.md](AUDIT.md) · [CHANGELOG](CHANGELOG.md) · [v0.3.3 release](../../releases/tag/v0.3.3).
-
-> [!TIP]
-> **Build size: −48.5 %.** The release profile now ships a **6.25 MiB** binary instead of 12.14 MiB, and the NSIS installer drops to **2.00 MiB** — with cold start, memory and frame pacing unchanged within measurement noise. Full methodology, the rejected variants and the raw dumps: [BENCHMARKS.md](BENCHMARKS.md). A CI guard ([perf-guard.yml](.github/workflows/perf-guard.yml)) fails any PR that pushes the binary past 7.0 MB.
+```
+Electron WhatsApp wrapper   ████████████████████████████████████████  ~200 MB
+Discord                     ███████████████████████████████████████  ~180 MB
+This app                    ████                                       6.25 MB
+```
 
 ---
+
+## Why this exists
+
+Most WhatsApp desktop wrappers ship an entire Chromium build to render one web page. That is 180–200 MB of disk and
+hundreds of megabytes of RAM for a chat window.
+
+This one uses **Tauri v2** and the WebView your operating system already has (WebView2 on Windows, WebKitGTK on
+Linux). The installer is **2.0 MB**. The binary is **6.25 MB**. Cold start is **~175 ms** to a visible window.
+
+It is also the only build of this app where the release profile was tuned with measurements instead of vibes —
+`[profile.release]` with fat LTO and `codegen-units = 1` cut the binary **48.5 %** with no measurable cost in startup,
+memory or frame pacing. Every number, including the two variants that were rejected, is in [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Features
 
-- Uses the native system WebView instead of bundling Chromium
-- Tray support for background notifications
-- Global shortcut (`Ctrl + Alt + W`) to show or hide the window
-- Optional auto-start on Windows
-- Custom CSS tweaks to remove some unnecessary UI elements
-- Linux support with `.deb` and `.AppImage` builds
-- Built with Rust and Tauri
-
----
-
-## Why Tauri?
-
-Most desktop web apps today ship with a full Chromium instance through Electron. While that makes development easier, it also increases RAM usage and app size.
-
-Tauri takes a different approach by using the operating system's native WebView. For a project like this, that makes more sense and keeps the app much lighter.
-
----
+- Native window and tray — no Chromium, no Electron runtime
+- Global shortcut `Ctrl + Alt + W` to show/hide
+- Optional auto-start with the system
+- Native dark title bar and menus on Windows
+- Downloads with sanitised filenames (reserved Windows names, duplicate handling)
+- Deep links (`whatsapp://`), single-instance lock, native notifications
+- Windows `.exe` installer and Linux `.deb` / `.AppImage`
 
 ## Installation
 
 ### Windows
 
-1. Go to the [Releases](https://github.com/Wpnnt/whatsapp-tauri/releases) page
-2. Download the latest Windows installer
-3. Run `whatsapp-tauri_x64-setup.exe`
+1. Grab the installer from [**Releases**](https://github.com/barraco002/whatsapp-tauri-lite/releases/latest)
+2. Run `whatsapp-tauri-lite_0.3.3_x64-setup.exe`
+3. The app registers itself for the current user — no admin prompt
 
 ### Linux
 
-1. Download either the `.deb` or `.AppImage` release
-2. If using AppImage, give it execution permissions:
-
 ```bash
-chmod +x WhatsApp_Tauri.AppImage
+sudo dpkg -i whatsapp-tauri-lite_0.3.3_amd64.deb
+# or
+chmod +x WhatsApp_Tauri_0.3.3_amd64.AppImage && ./WhatsApp_Tauri_0.3.3_amd64.AppImage
 ```
 
-3. Run the application
+## Numbers (measured, not estimated)
 
----
+| | value |
+|---|---:|
+| Installer (NSIS) | **2.00 MiB** |
+| Binary | **6.25 MiB** |
+| Cold start → window visible | **175 ms** (median of 10) |
+| Cold start → WebView ready | 692 ms |
+| Idle RSS (incl. WebView2) | 845 MiB |
+| Idle CPU | ~1 % |
+| Frame pacing | 75 fps, p95 13.4 ms |
+
+Same machine, same harness, raw dumps committed in [`perf/out/`](perf/out). Reproduce with `perf/measure.ps1`.
+The honest caveats (network-bound FCP, WebView2 dominating RSS, warm disk cache) are written down in [BENCHMARKS.md](BENCHMARKS.md#what-is-not-claimed-here).
 
 ## Building from source
 
-If you want to build the project yourself:
-
-### Requirements
-
-- [Rust & Cargo](https://www.rust-lang.org/tools/install)
-- [Node.js](https://nodejs.org/)
-- [NSIS](https://nsis.sourceforge.io/Download) (Windows only)
-- [WebKit2Gtk](https://tauri.app/v2/guides/getting-started/prerequisites/#linux) (Linux only)
-
----
-
-### Clone the repository
+Requirements: Rust + Cargo, Node.js, and on Windows the MSVC build tools & Windows SDK; on Linux WebKit2GTK.
 
 ```bash
-git clone https://github.com/Wpnnt/whatsapp-tauri.git
-```
-
-### Enter the project folder
-
-```bash
-cd whatsapp-tauri
-```
-
-### Install dependencies
-
-```bash
+git clone https://github.com/barraco002/whatsapp-tauri-lite.git
+cd whatsapp-tauri-lite/whatsapp-lite
 npm install
+npm run tauri dev      # development
+npm run tauri build    # release binaries + installer
 ```
 
-### Run in development mode
+## Project structure
 
-```bash
-npm run tauri dev
+```
+whatsapp-lite/            # the Tauri app
+  src-tauri/src/main.rs   # window, menus, downloads, deep links, tray
+  src-tauri/Cargo.toml    # deps + the tuned [profile.release]
+perf/                     # measurement harness and raw evidence
+BENCHMARKS.md             # what changed and what it cost
+OPTIMIZATION_REPORT.md    # full audit: phases, KPIs, rejected variants
+BUGS_FOUND.md             # pre-existing bugs, documented not fixed
 ```
 
-### Build production binaries
+## Credits and licence
 
-```bash
-npm run tauri build
-```
+MIT. Based on [Wpnnt/WhatsApp-Tauri](https://github.com/Wpnnt/WhatsApp-Tauri) — all credit for the original client
+goes to its author. This fork adds the release-profile work, the measurement harness, hardening fixes from a source
+audit, and a CI guard that fails any PR pushing the binary past 7 MB.
 
----
-
-## Notes
-
-- This is an unofficial client and is not affiliated with WhatsApp or Meta.
-- The application depends on the system WebView being available and updated.
-- Linux builds may look slightly different depending on the desktop environment.
+Not affiliated with WhatsApp or Meta. Unofficial client, use at your own risk.
 
 ---
 
-## Contributing
-
-Pull requests, suggestions, and bug reports are welcome.
-
-If you find a bug or have an idea that could improve the project, feel free to open an issue.
-
----
-
-## Author
-
-Made by [Wpnnt](https://github.com/Wpnnt)
-
-If you like the project, consider giving it a star.
-
----
-
-## License
-
-This project is licensed under the MIT License.
-
-See the [LICENSE](LICENSE) file for more information.
+If this saved you 200 MB of disk, a star costs you nothing and helps other people find it.
