@@ -21,8 +21,11 @@
 | Tiempo de build release | 170.3 s | 366 s | +115 % | coste de CI, no de usuario |
 
 **Veredicto:** se aceptó **un** cambio (perfil de compilación de release, variante `opt-level=3`). Reduce el
-peso distribuible a la mitad sin coste medible en arranque, memoria ni fluidez. Dos candidatos más del catálogo
-se prepararon y **no** se ejecutaron: el presupuesto de la sesión se agotó antes (ver §7).
+peso distribuible a la mitad sin coste medible en arranque, memoria ni fluidez.
+
+Se midieron **tres variantes** del mismo eje (`opt-level=3`, `"s"` y `"z"`): dos se revirtieron con evidencia
+(§5.5). El eje del tamaño está **cerrado con datos**: por debajo de `3` el arranque empeora de forma monótona.
+Los demás candidatos del catálogo se prepararon y **no** se ejecutaron, con el motivo escrito en §7.
 
 ---
 
@@ -127,6 +130,33 @@ intra-tanda era 151–284 ms: **mayor que la diferencia que se pretendía detect
 señal/ruido el veredicto correcto es "no establecido", no "regresión" ni "mejora". Se repitió con 10 tomas →
 175.2 ms. Se documentan ambas tandas y el criterio; no se elige la que conviene.
 
+### 5.5 Iteración 2 — `opt-level = "s"` (RECHAZADA → rollback)
+
+Rama `perf/opt-level-s` (commits `15df24d` experimento, `cbbd38a` reversión). Una sola variable: `opt-level`.
+
+| KPI | `opt-level=3` (aceptada) | `opt-level="s"` | Δ |
+|---|---|---|---|
+| `.exe` | 6 555 648 B | 5 083 136 B | −22.5 % |
+| Instalador NSIS | 2 096 343 B | 1 795 684 B | −14.3 % |
+| `t_window` (10 tomas) | 175.2 ms | **226.0 ms** | **+29.0 %** |
+| `t_cdp` | 691.6 ms | 744.7 ms | +7.7 % |
+| Build (`tauri build`) | 366 s | 201.5 s | −45 % |
+| rAF medio | 74.97 fps | 75.10 fps | +0.2 % |
+
+**Rechazada por `t_window` +29 %** (umbral §6). El tamaño extra no compensa 51 ms más de espera en cada
+apertura. Las filas de RSS (906 MiB) y CPU (4.32 %) de esa tanda **no son concluyentes**: el binario recién
+compilado estaba siendo inspeccionado por Defender y la serie arranca con el pico de sincronización de WhatsApp.
+
+**La curva completa, mismo hardware:**
+
+| `opt-level` | `.exe` | `t_window` | Coste por MiB ahorrado |
+|---|---|---|---|
+| `3` | 6.25 MiB | **175.2 ms** | — (referencia) |
+| `"s"` | 4.85 MiB | 226.0 ms | +33 ms/MiB |
+| `"z"` | 4.22 MiB | 274.1 ms | +48 ms/MiB |
+
+Tres puntos, una conclusión: `opt-level=3` es el óptimo para esta app. Ya no se sigue buscando por ahí.
+
 ### 5.4 Efectos secundarios conocidos y aceptados
 
 1. **Build más lento** (170 → 366 s) por `lto="fat"` + `codegen-units=1`. Afecta a la CI y al desarrollador,
@@ -156,7 +186,10 @@ persistencia, ni se añadió ninguna dependencia. El cambio es **solo** configur
 
 | Candidato | Evidencia que lo respalda | Por qué no se ejecutó |
 |---|---|---|
-| `hidden-until-ready` (ventana oculta hasta el primer *paint*) | `t_cdp` 691 ms ⇒ ~0.7 s de pantalla en blanco | Requiere cambiar el orden de `setup` y validar el *flash* visual, que la sonda actual no mide: haría falta un KPI de primer pintado **visible** |
+| `hidden-until-ready` (ventana oculta hasta el primer *paint*) | `t_cdp` 691 ms ⇒ ~0.7 s de pantalla en blanco | Requiere cambiar el orden de `setup` y validar el *flash* visual, que la sonda actual no mide: haría falta un KPI de primer pintado **visible**. Además movería `t_window` a ~690 ms (KPI crítico) |
+| `lto="thin"` para bajar el tiempo de build | `tauri build` 366 s (KPI 8 +115 % frente al baseline) | Mejorar el build a costa de crecer el `.exe` es cambiar el KPI que sufre el usuario por el que sufre la CI. Se probó `opt-level="s"`, que ya bajó el build a 201.5 s, y se revirtió por arranque: la dirección correcta no es abaratar el build |
+| `defer-post-window-init` (mover menú/bandeja/atajo/deep-link a un `spawn`) | `main.rs:494-536` corre en serie entre `build()` y el retorno al event loop | El webview vive en **otro proceso**: bloquear el hilo principal retrasa la ventana, no el arranque del render. Sobre los KPI medidos el efecto esperado es ~0 ⇒ "no establecido" por diseño. Documentado en `bottleneck-analysis.md` |
+| `renderer-process-limit` (limitar renderers de WebView2) | 8 procesos y 813 MiB en el árbol WebView2 (96 % del RSS) | Podría romper videollamadas o workers de WhatsApp Web, y **eso no lo puede verificar esta sonda**: sin verificación funcional manual del usuario no entra un cambio que se quedaría en `main` |
 | `menu-cache` (cachear las 3 lecturas de disco de `build_native_menu`) | `main.rs:288`, llamado en `setup` (526) y en **cada** evento de menú (579-581) | Toca el mismo código que el bug B-02 (doble reconstrucción). Arreglarlo sería arreglar un bug, y §0 lo prohíbe en este runbook |
 | `webview2-flags` (`--disable-features`, `--js-flags`) | `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` ya se usa para CDP | Todo su efecto cae en el territorio de WhatsApp Web (RSS, FCP), dominado por la red; sin un KPI aislable el resultado sería "no establecido" por diseño |
 | `no-blocking-sleep` | `main.rs:513-524`: `thread::sleep(1500 ms)` dentro de `spawn` | Es el bug **B-01**, no una optimización. Registrado en `BUGS_FOUND.md`; tocarlo aquí violaría §0 |
@@ -223,8 +256,8 @@ Ninguno de estos comandos se ha ejecutado. No hay nada publicado en ningún remo
 | Punto | Estado |
 |---|---|
 | ¿Se midió antes de optimizar? | Sí — baseline completo en `perf-log.md` antes de tocar `Cargo.toml` |
-| ¿Una idea por iteración? | Sí — solo el perfil de release |
-| ¿Rollback sin piedad cuando un KPI empeoró? | Sí — variante `opt-level="z"` descartada (+64 % en `t_window`) |
+| ¿Una idea por iteración? | Sí — solo el perfil de release (iter. 1) y solo `opt-level` (iter. 2) |
+| ¿Rollback sin piedad cuando un KPI empeoró? | Sí — `opt-level="z"` descartada (+64 % en `t_window`) y `opt-level="s"` revertida en su rama (+29 %) |
 | ¿Se registraron los bugs sin arreglarlos? | Sí — B-01, B-02, B-03 en `BUGS_FOUND.md` |
 | ¿API pública, `tauri.conf.json`, features y persistencia intactas? | Sí — el diff es configuración de compilación |
 | ¿Dependencias nuevas? | Ninguna |
