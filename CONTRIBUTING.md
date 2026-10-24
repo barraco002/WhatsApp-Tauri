@@ -34,6 +34,20 @@ Nine tests today, all on the parts where a mistake is dangerous: host allowlisti
 writability, reserved Windows filenames, duplicate and simultaneous reservations. A patch that changes one of those
 paths without a test is not ready.
 
+## Documentation gates
+
+Docs are checked too, because a broken link or an invalid issue form fails silently:
+
+```bash
+python perf/check-links.py       # every link in README, CONTRIBUTING, SECURITY and the code of conduct
+python perf/check-yaml.py        # workflows and issue templates parse as YAML
+python perf/check-encoding.py    # UTF-8, no BOM, no mojibake
+powershell -File perf/verify.ps1
+powershell -File perf/verify-publish.ps1   # the published repo matches the measured numbers
+```
+
+`verify.ps1` runs the three Python checks on its own, so it is the one to remember.
+
 ## The size budget
 
 `perf-guard.yml` fails any PR whose release binary passes **7 000 000 bytes**. The current binary is 6 555 648 B, so
