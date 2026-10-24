@@ -76,6 +76,12 @@ SHA-256 of the installer: `a389e6e7b8ad242f47412bef099735dceb8818398c1f3358d8ef8
 
 **Linux**: no binaries in Releases yet. Build from source (see below); the Tauri config targets WebKitGTK.
 
+**No install at all**: the browser sibling,
+[**WhatsApp Web Deluxe**](https://github.com/barraco002/whatsapp-web-deluxe), opens the
+same website in a Chrome popup window with an unread badge on the toolbar. 11 KB, no
+content script, no network requests, no analytics. It is not a replacement for this
+app - it is what you use on a machine where you cannot install anything.
+
 ## Numbers (measured, not estimated)
 
 | | value |
