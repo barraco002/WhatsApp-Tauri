@@ -1,0 +1,89 @@
+﻿{
+    "label":  "iter1b-startup10",
+    "started_utc":  "2026-10-24T10:18:29.3135902Z",
+    "exe":  "D:\\dev\\whatsapp-tauri\\whatsapp-lite\\src-tauri\\target\\release\\whatsapp-tauri.exe",
+    "artifacts":  {
+                      "installers":  [
+                                         {
+                                             "mb":  2,
+                                             "name":  "Whatsapp Tauri_0.3.3_x64-setup.exe"
+                                         }
+                                     ],
+                      "bundle_files":  1,
+                      "exe_mb":  6.25,
+                      "exe_bytes":  6555648,
+                      "bundle_bytes":  2096343,
+                      "bundle_mb":  2,
+                      "icons_bytes":  224046
+                  },
+    "startup":  [
+                    {
+                        "run":  1,
+                        "t_window_ms":  222.2,
+                        "t_cdp_ready_ms":  913.2,
+                        "pid":  19480
+                    },
+                    {
+                        "run":  2,
+                        "t_window_ms":  197.4,
+                        "t_cdp_ready_ms":  703.8,
+                        "pid":  4492
+                    },
+                    {
+                        "run":  3,
+                        "t_window_ms":  174.6,
+                        "t_cdp_ready_ms":  690.4,
+                        "pid":  28820
+                    },
+                    {
+                        "run":  4,
+                        "t_window_ms":  139.9,
+                        "t_cdp_ready_ms":  657.2,
+                        "pid":  32160
+                    },
+                    {
+                        "run":  5,
+                        "t_window_ms":  175.5,
+                        "t_cdp_ready_ms":  689.3,
+                        "pid":  27188
+                    },
+                    {
+                        "run":  6,
+                        "t_window_ms":  179.8,
+                        "t_cdp_ready_ms":  690.4,
+                        "pid":  25480
+                    },
+                    {
+                        "run":  7,
+                        "t_window_ms":  158.3,
+                        "t_cdp_ready_ms":  666.5,
+                        "pid":  35164
+                    },
+                    {
+                        "run":  8,
+                        "t_window_ms":  199.7,
+                        "t_cdp_ready_ms":  733.9,
+                        "pid":  8428
+                    },
+                    {
+                        "run":  9,
+                        "t_window_ms":  174.8,
+                        "t_cdp_ready_ms":  692.8,
+                        "pid":  10180
+                    },
+                    {
+                        "run":  10,
+                        "t_window_ms":  173.9,
+                        "t_cdp_ready_ms":  710.4,
+                        "pid":  24428
+                    }
+                ],
+    "idle":  null,
+    "webview":  null,
+    "startup_summary":  {
+                            "t_window_median_ms":  175.15,
+                            "t_cdp_median_ms":  691.59999999999991,
+                            "runs_ok":  10
+                        },
+    "finished_utc":  "2026-10-24T10:19:18.4739849Z"
+}
