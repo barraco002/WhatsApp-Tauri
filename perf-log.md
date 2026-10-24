@@ -37,6 +37,14 @@ sin builds ni clippy en paralelo. Ver `PERF-PLAN.md` para los límites declarado
 | 2026-10-24T09:31Z | 12ae4d2 | `cargo test --all-targets` | 9/9 ok |
 | 2026-10-24T09:26Z | 12ae4d2 | `npm run build` | verde (NSIS generado) |
 
+### Nota sobre qué binario se compara
+
+`cargo build --release` y `tauri build` **no producen el mismo archivo**: `tauri build` embebe el manifiesto
+de Windows, los iconos y los metadatos del bundle, unos ~254 KB más. Medido con la misma configuración
+(`opt-level=3`): 6 301 184 B con `cargo` frente a 6 555 648 B con `tauri`. Por eso **todas las cifras de
+tamaño de este registro se comparan bundle contra bundle**, y el baseline (12 729 344 B) es el del bundle.
+Comparar un `cargo build` con un bundle habría inflado la mejora en ~4 puntos porcentuales falsos.
+
 ### Nota de atribución (importante para el scoring)
 
 El 96,1 % del RSS en idle (813 de 846 MiB) pertenece al árbol **WebView2 + WhatsApp Web**, no al binario.
