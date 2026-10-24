@@ -113,3 +113,52 @@ aceptar ni rechazar ningún cambio; solo se registra.
 0.70 %; es la resincronización de WhatsApp Web al abrir la app, presente también en el baseline (2.68 %).
 La mediana de 60 s es la cifra que se compara.
 
+---
+
+## Iteración 2 — rama `perf/opt-level-s` (RECHAZADA → rollback)
+
+Hipótesis: si `"z"` arruinó el arranque por su agresividad, `"s"` (intermedia) debería dar un tamaño cercano
+con un arranque aceptable. **Una sola variable: `opt-level`.** El resto del perfil queda igual.
+
+| Fecha ISO | KPI | Tras iter. 1 (`opt-level=3`) | Iter. 2 (`"s"`) | Δ | Veredicto |
+|---|---|---|---|---|---|
+| 2026-10-24T10:38Z | kpi1_exe | 6 555 648 B (6.25 MiB) | 5 083 136 B (4.85 MiB) | −22.5 % | mejora |
+| 2026-10-24T10:38Z | kpi1_installer | 2 096 343 B (2.00 MiB) | 1 795 684 B (1.71 MiB) | −14.3 % | mejora |
+| 2026-10-24T10:44Z | kpi3_t_window | 175.2 ms (10 tomas) | **226.0 ms** (10 tomas: 214.7–427.3) | **+29.0 %** | **regresión** |
+| 2026-10-24T10:44Z | kpi3_t_cdp | 691.6 ms | 744.7 ms | +7.7 % | regresión leve |
+| 2026-10-24T10:47Z | kpi2_rss_total | 844.7 MiB | 906.1 MiB | +7.3 % | no concluyente (nota) |
+| 2026-10-24T10:47Z | kpi4_cpu_median | 1.10 % | 4.32 % | +3.2 pp | no concluyente (nota) |
+| 2026-10-24T10:47Z | kpi5_fps_avg | 74.97 fps | 75.10 fps | +0.2 % | neutro |
+| 2026-10-24T10:38Z | kpi8_tauri_build | 366 s | 201.5 s | −45 % | mejora |
+
+**Motivo del rollback:** `t_window` +29 % sobre la variante aceptada (umbral §6: 10 %). La rama conserva el
+commit del experimento (`15df24d`) y su reversión (`cbbd38a`); `main` no se toca.
+
+**Nota sobre RSS y CPU de esta tanda.** El binario acababa de generarse y Defender lo estaba inspeccionando:
+la serie de CPU arranca alta y el RSS de la primera muestra es el pico de sincronización. Con una sola tanda
+esas dos filas **no son concluyentes** y por sí solas no habrían bastado ni para aceptar ni para rechazar.
+El rechazo se apoya en `t_window`, estable y determinista.
+
+### La curva `opt-level` — tres puntos medidos en el mismo hardware
+
+| `opt-level` | `.exe` (bundle) | `t_window` (10 tomas) | `t_cdp` | Coste por MiB ahorrado |
+|---|---|---|---|---|
+| `3` (aceptada) | 6.25 MiB | **175.2 ms** | 691.6 ms | — (referencia) |
+| `"s"` (rechazada) | 4.85 MiB | 226.0 ms | 744.7 ms | **+33 ms/MiB** |
+| `"z"` (rechazada) | 4.22 MiB | 274.1 ms | 784.8 ms | **+48 ms/MiB** |
+
+Lectura: por debajo de `opt-level=3` el arranque se degrada de forma **monótona** con el tamaño. El óptimo para
+esta app es `3`: el binario ya pesa la mitad, sin pagar milisegundos. Cualquier recorte adicional se compra
+con tiempo de apertura, que es exactamente lo que el usuario siente. La búsqueda en ese eje está **cerrada**.
+
+### Gates de la iteración 2
+
+| Gate | Resultado |
+|---|---|
+| `cargo build --release` | verde (378.3 s) |
+| `npm run build` (tauri build + NSIS) | verde (201.5 s, NSIS 1 795 684 B) |
+
+No se ejecutaron `fmt`/`clippy`/`test` sobre esta variante porque el rechazo se decidió por KPI antes de
+cualquier candidatura a merge; el código no se mergeó y `main` conserva los gates verdes de la iteración 1.
+
+

@@ -89,7 +89,7 @@ los 167 ms hasta tener ventana; no hay evidencia de que dominen. No se toca lo q
 
 | # | Slug | Cambio | KPI objetivo | Estimación | Riesgo | Archivos |
 |---|---|---|---|---|---|---|
-| 1 | `release-profile` | `[profile.release]`: `lto="fat"`, `codegen-units=1`, `panic="abort"`, `strip="symbols"`, `opt-level="z"` | KPI 1 | −35/−50 % | bajo | 1 |
+| 1 | `release-profile` | `[profile.release]`: `lto="fat"`, `codegen-units=1`, `panic="abort"`, `strip="symbols"`, `opt-level=3` | KPI 1 | **hecho: −48.5 %** (`"z"` descartada: `t_window` +64 %) | bajo | 1 |
 | 2 | `webview2-flags` | `additional_browser_args` en el builder del webview | KPI 2 | −10/−25 % del árbol | medio (puede degradar FPS) | 1 |
 | 3 | `hidden-until-ready` | `visible:false` + `show()` al primer paint del webview | KPI 3 (percepción) | −300 ms percibidos | bajo | 2 |
 | 4 | `no-blocking-sleep` | `std::thread::sleep` → `tokio::time::sleep` | KPI 4 (jank) | elimina 1 worker bloqueado 1.5 s | bajo | 1 |
@@ -99,6 +99,29 @@ los 167 ms hasta tener ventana; no hay evidencia de que dominen. No se toca lo q
 
 Orden de ejecución propuesto: **1 → 3 → 4 → 5 → 2 → 7** (de menor riesgo y mayor rendimiento esperado a mayor).
 Los candidatos 6 queda **condicionado a aprobación** por tocar features de compilación.
+
+## Presupuesto de arranque: qué ocurre entre `build()` y el primer `paint`
+
+Evidencia de código (`main.rs`): la ventana nativa existe en el instante en que `WebviewWindowBuilder::build()`
+devuelve (`main.rs:492`), y eso es lo que mide `t_window` (175.2 ms). Todo lo que sigue se ejecuta **de forma
+secuencial en el hilo de setup, antes de devolver `Ok(())` al runtime**, es decir antes de que el event loop
+pueda servir el primer frame:
+
+| Línea | Trabajo | Coste esperado |
+|---|---|---|
+| 499 | `read_deep_link_enabled` (lectura de disco) + `register_all()/unregister()` (registro en el SO) | bajo, pero es I/O en el camino crítico |
+| 507 | `on_open_url` (registro de callback) | trivial |
+| 513-524 | segunda `read_deep_link_enabled` + `get_current()` + `spawn` con `sleep(1500 ms)` (**B-01**) | el `sleep` bloquea un worker del pool |
+| 526 | `build_native_menu` → 3 lecturas de disco | bajo |
+| 527-528 | `set_menu` **dos veces** (app y ventana) | una aplicación de menú Win32 redundante |
+| 530-535 | `register` del atajo global Ctrl+Alt+W | bajo |
+| 536 | `setup_tray` → menú de 2 ítems + icono por defecto | bajo (ver `tray.rs`) |
+
+Ninguno de estos pasos es pesado por separado; el problema es que están **en serie** entre la creación de la
+ventana y la devolución del control al event loop. La suma está dentro de `t_cdp` (691.6 ms), que además
+incluye la navegación a `web.whatsapp.com` (dominada por la red). De ahí el candidato
+`defer-post-window-init`: mover 499-536 a un `spawn` diferido, sin quitar ninguna feature, y medir si
+`t_cdp`/FCP se mueven por encima del ruido. Solo se aceptará si la mejora supera la incertidumbre (L-0008).
 
 ## Bugs preexistentes detectados (registrados, NO arreglados)
 
