@@ -4,10 +4,12 @@ on:
     branches:
       - dev
       - main
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
+
+# El disparo por tag esta desactivado a proposito: publicar un tag no debe
+# recompilar ni sobrescribir los artefactos de un release ya publicado
+# (ver OPTIMIZATION_REPORT.md, incidencia del release v0.3.3). El binario se
+# adjunta a mano con `gh release upload` y se verifica con perf/verify-publish.ps1.
 
 jobs:
   quality-gate:
